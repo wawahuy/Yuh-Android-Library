@@ -8,7 +8,7 @@ import org.json.JSONObject;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 
-import ml.huytools.ycnanswer.Commons.Annotation.JsonName;
+import ml.huytools.lib.Annotation.JsonName;
 
 /***
  * Model.java
