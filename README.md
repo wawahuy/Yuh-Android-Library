@@ -14,7 +14,7 @@
 - build.gradle (Module:.....)
 ```
 	dependencies {
-	        implementation 'com.github.wawahuy:Yuh-Android-Library:v1.0.0'
+	        implementation 'com.github.wawahuy:Yuh-Android-Library:v1.1.0-dev'
 	}
 ```
 
