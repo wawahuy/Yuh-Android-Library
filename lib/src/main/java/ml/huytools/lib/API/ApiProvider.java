@@ -1,82 +1,35 @@
-package ml.huytools.lib;
+package ml.huytools.lib.API;
 
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
+import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.ProtocolException;
 import java.net.URL;
 
 
 /***
- * APIProvider.java
+ * ApiProvider.java
  * Author: Nguyen Gia Huy
  * Project: https://github.com/wawahuy/YCNAnswerAndroid
  * Start: 16/11/2019
  * Update: 24/11/2019
  *
  */
-public class APIProvider {
+public class ApiProvider {
 
-    static String token;
-    static String host;
-
-    /***
-     * Output
-     */
-    static public class Output<T extends Model> {
-        public boolean Status;
-        public String Message;
-        public Object Data;
-        public String Uri;
-
-        private Output(){
-        }
-
-        public static Output Create(String json) throws JSONException {
-            Output output = new Output();
-            JSONObject jsonObject = new JSONObject(json);
-            output.Status = jsonObject.getBoolean("status");
-            output.Message = jsonObject.has("message") ? jsonObject.getString("message") : null;
-            output.Data = jsonObject.get("data");
-            return output;
-        }
-
-        public boolean isDJObject(){
-            return Data instanceof JSONObject;
-        }
-
-        public boolean isDJArray(){
-            return Data instanceof JSONArray;
-        }
-
-
-        public ModelManager<T> toModelManager(Class<T> clazz){
-            if(Data == null || !isDJArray())
-                return null;
-            return ModelManager.ParseJSON(clazz, Data.toString());
-        }
-
-        public Model toModel(Class<T> clazz){
-            if(Data == null || !isDJObject())
-                return null;
-            return Model.ParseJson(clazz, Data.toString());
-        }
-
-    }
 
     /**
      * Async
@@ -85,13 +38,13 @@ public class APIProvider {
         Async.AnyRun runnable;
         Callback callback;
         Thread thread;
-        Uri.Builder params;
+        ApiParameters params;
         Handler handler;
         int requestCode;
 
         private Async(Async.AnyRun run){
             thread = new Thread(this);
-            params = new Uri.Builder();
+            params = new ApiParameters();
             runnable = run;
             handler = new Handler(Looper.myLooper());
         }
@@ -104,8 +57,8 @@ public class APIProvider {
         public static Async GET(final String uri){
             return ANY(new Async.AnyRun() {
                 @Override
-                public Output run(Async async) {
-                    return APIProvider.GET(uri);
+                public ApiOutput run(Async async) {
+                    return ApiProvider.GET(uri);
                 }
             });
         }
@@ -113,18 +66,33 @@ public class APIProvider {
         public static Async POST(final String uri){
             return ANY(new Async.AnyRun() {
                 @Override
-                public Output run(Async async) {
-                    return APIProvider.POST(uri, async.params);
+                public ApiOutput run(Async async) {
+                    return ApiProvider.POST(uri, async.params);
                 }
             });
         }
 
         public Async AddParam(String key, String value){
-            params.appendQueryParameter(key, value);
+            params.add(key, value);
             return this;
         }
 
-        public Async SetParams(Uri.Builder params){
+        public Async AddParam(String key, File value){
+            params.add(key, value);
+            return this;
+        }
+
+        public Async AddParam(String key, String filename, byte[] bytes){
+            params.add(key, filename, bytes);
+            return this;
+        }
+
+        public Async AddParam(String key, String filename, Bitmap bitmap){
+            params.add(key, filename, bitmap);
+            return this;
+        }
+
+        public Async SetParams(ApiParameters params){
             this.params = params;
             return this;
         }
@@ -143,7 +111,7 @@ public class APIProvider {
         @Override
         public void run() {
             // run
-            final Output output = runnable.run(Async.this);
+            final ApiOutput output = runnable.run(Async.this);
 
             // run on thread created
             handler.post(new Runnable() {
@@ -155,11 +123,11 @@ public class APIProvider {
         }
 
         public interface Callback {
-            void OnAPIResult(Output output, int requestCode);
+            void OnAPIResult(ApiOutput output, int requestCode);
         }
 
         private interface AnyRun {
-            Output run(Async async);
+            ApiOutput run(Async async);
         }
     }
 
@@ -171,7 +139,7 @@ public class APIProvider {
      * @throws IOException
      */
     private static HttpURLConnection CreateConnection(String uri) throws IOException {
-        URL url = new URL(host + uri);
+        URL url = new URL(ApiConfig.buildUrl(uri));
         HttpURLConnection myConnection = (HttpURLConnection) url.openConnection();
         return myConnection;
     }
@@ -210,27 +178,39 @@ public class APIProvider {
      * @param runnable
      * @return
      */
-    private static Output ANY(String uri, AnyRun runnable){
+    private static ApiOutput ANY(String uri, AnyRun runnable){
+        ApiOutput output = new ApiOutput();
+        ApiAuthenticate auth = ApiConfig.getAuthenticate();
+
         try {
             HttpURLConnection httpURLConnection = CreateConnection(uri);
             httpURLConnection.setReadTimeout(15000);
             httpURLConnection.setConnectTimeout(15000);
+            httpURLConnection.setUseCaches(false);
+            httpURLConnection.setRequestProperty("Connection", "Keep-Alive");
+            httpURLConnection.setRequestProperty("Cache-Control", "no-cache");
+
+            /// Inject
+            ApiConfig.applyInterceptHeader(httpURLConnection,uri);
 
             /// Auth
-            /// ---------- Update ---------------
+            if(auth != null && auth.canInject(uri)){
+                auth.OnHeaderInject(httpURLConnection);
+            }
 
             /// Custom
             runnable.run(httpURLConnection);
 
             /// code
             int responseCode = httpURLConnection.getResponseCode();
+            output.Uri = ApiConfig.buildUrl(uri);
+            output.ResponseCode = responseCode;
 
             if(responseCode == HttpURLConnection.HTTP_OK){
                 String strJson = ReadString(httpURLConnection);
-                Output output = Output.Create(strJson);
-                output.Uri = uri;
+                output.DataString = strJson;
+                output.set(strJson);
                 Log(strJson);
-                return output;
             } else {
                 Log("Response code: "+ responseCode);
             }
@@ -239,17 +219,20 @@ public class APIProvider {
             httpURLConnection.disconnect();
 
         } catch (IOException e) {
-            Log("Error create HttpsUrlConnection: "+ host + uri);
+            Log(e.toString());
             e.printStackTrace();
         } catch (JSONException e) {
             Log("Error format json");
             e.printStackTrace();
         }
 
-        return new Output();
+        /// inject
+        ApiConfig.applyInterceptOutput(output,uri);
+
+        return output;
     }
 
-    private static Output ANY_NO_DATA(String uri, final String method){
+    private static ApiOutput ANY_NO_DATA(String uri, final String method){
         return ANY(uri, new AnyRun() {
             @Override
             public void run(HttpURLConnection connection) throws ProtocolException {
@@ -258,26 +241,22 @@ public class APIProvider {
         });
     }
 
-    private static Output ANY_HAS_DATA(String uri, final String method , final Uri.Builder params){
+    private static ApiOutput ANY_HAS_DATA(String uri, final String method , final ApiParameters params){
         return ANY(uri, new AnyRun() {
             @Override
             public void run(HttpURLConnection connection) throws ProtocolException {
                 connection.setRequestMethod(method);
                 connection.setDoOutput(true);
                 connection.setDoInput(true);
+                connection.setRequestProperty("Content-Type", "multipart/form-data;boundary=" + ApiParameters.Parameter.BOUNDARY);
 
                 //out
                 try {
                     OutputStream out = connection.getOutputStream();
-                    OutputStreamWriter outputStreamWriter = new OutputStreamWriter(out, "UTF-8");
-                    BufferedWriter bufferedWriter = new BufferedWriter(outputStreamWriter);
-
-                    ///Out data
-                    bufferedWriter.write(params.build().getEncodedQuery());
-
-                    ///Close
-                    bufferedWriter.flush();
-                    bufferedWriter.close();
+                    DataOutputStream dataOutputStream =  new DataOutputStream(out);
+                    params.writeToDataOutputStream(dataOutputStream);
+                    dataOutputStream.flush();
+                    dataOutputStream.close();
                     out.close();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -290,26 +269,14 @@ public class APIProvider {
 
 
     /// ---------------------
-    public static Output GET(String uri){
+    public static ApiOutput GET(String uri){
         return ANY_NO_DATA(uri, "GET");
     }
 
-    public static Output POST(String uri, final Uri.Builder params){
+    public static ApiOutput POST(String uri, final ApiParameters params){
         return ANY_HAS_DATA(uri, "POST", params);
     }
 
-
-
-
-
-    /// ----------------------
-    public static void SetToken(String token){
-        APIProvider.token = token;
-    }
-
-    public static void SetHost(String host){
-        APIProvider.host = host;
-    }
 
 
     private static void Log(String str){
