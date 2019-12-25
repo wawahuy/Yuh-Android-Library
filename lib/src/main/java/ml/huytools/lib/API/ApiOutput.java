@@ -42,16 +42,15 @@ public class ApiOutput<T extends Model> {
      * @throws JSONException
      */
     public void set(String json) throws JSONException {
-        ApiOutput output = new ApiOutput();
         JSONObject jsonObject = new JSONObject(json);
 
         Handling handling = ApiConfig.getCustomOutput();
         if (handling == null) {
-            output.Status = jsonObject.getBoolean("status");
-            output.Message = jsonObject.has("message") ? jsonObject.getString("message") : null;
-            output.Data = jsonObject.get("data");
+            Status = jsonObject.getBoolean("status");
+            Message = jsonObject.has("message") ? jsonObject.getString("message") : null;
+            Data = jsonObject.get("data");
         } else {
-            handling.OnHandling(output, jsonObject);
+            handling.OnHandling(this, jsonObject);
         }
     }
 
