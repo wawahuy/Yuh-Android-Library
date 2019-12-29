@@ -1,5 +1,7 @@
 # Yuh Android Library
 [![](https://jitpack.io/v/wawahuy/Yuh-Android-Library.svg)](https://jitpack.io/#wawahuy/Yuh-Android-Library)
+## Mục tiêu v1.2.x
+Xây dựng thư viện Graphics
 ## Install
 - build.gradle (Project:.....)
 ```
@@ -14,7 +16,7 @@
 - build.gradle (Module:.....)
 ```
 	dependencies {
-	        implementation 'com.github.wawahuy:Yuh-Android-Library:v1.1.1-dev'
+	        implementation 'com.github.wawahuy:Yuh-Android-Library:[Chưa có version nào build]'
 	}
 ```
 
