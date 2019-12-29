@@ -1,7 +1,5 @@
 # Yuh Android Library
 [![](https://jitpack.io/v/wawahuy/Yuh-Android-Library.svg)](https://jitpack.io/#wawahuy/Yuh-Android-Library)
-## Mục tiêu v1.2.x
-Xây dựng thư viện Graphics
 ## Install
 - build.gradle (Project:.....)
 ```
@@ -16,11 +14,15 @@ Xây dựng thư viện Graphics
 - build.gradle (Module:.....)
 ```
 	dependencies {
-	        implementation 'com.github.wawahuy:Yuh-Android-Library:[Chưa có version nào build]'
+	        implementation 'com.github.wawahuy:Yuh-Android-Library:v1.2.0'
 	}
 ```
 
-## Tài liệu Cơ Bản
+## Tài Liêu Game/Graphics
+- Chưa có hướng dẫn
+- Repo phát triễn & mẫu: https://github.com/wawahuy/YCNAnswerAndroid
+
+## Tài liệu Cơ Bản API & MVP
 
 ### Khởi tạo
 - Để có thể làm việc hoàn chỉnh, cần khởi tạo App ít nhất một lần từ bất kì Activity được khởi động

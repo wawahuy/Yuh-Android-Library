@@ -12,6 +12,11 @@ import android.graphics.PointF;
  *
  */
 public class CubicBezier {
+    public static final CubicBezier Ease = new CubicBezier(TIMING.Ease);
+    public static final CubicBezier EaseInOut = new CubicBezier(TIMING.EaseInOut);
+    public static final CubicBezier EaseIn = new CubicBezier(TIMING.EaseIn);
+    public static final CubicBezier EaseOut = new CubicBezier(TIMING.EaseOut);
+    public static final CubicBezier Linear = new CubicBezier(TIMING.Linear);
 
     public enum TIMING {
         Ease, EaseInOut, EaseIn, EaseOut, Linear
@@ -83,6 +88,10 @@ public class CubicBezier {
         Vector2D pc3 = p2.mul(3*t*t*(1-t));
         Vector2D pc4 = p3.mul(t*t*t);
         return YMath.Add(pc1, pc2, pc3, pc4);
+    }
+
+    public float computeProgressionOnY(float timeAxisX){
+        return B(timeAxisX).y;
     }
 
 }
