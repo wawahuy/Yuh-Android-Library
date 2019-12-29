@@ -14,30 +14,36 @@
 - build.gradle (Module:.....)
 ```
 	dependencies {
-	        implementation 'com.github.wawahuy:Yuh-Android-Library:v1.0.0'
+	        implementation 'com.github.wawahuy:Yuh-Android-Library:v1.1.1-dev'
 	}
 ```
 
-## Tài liệu
+## Tài liệu Cơ Bản
+
+### Khởi tạo
+- Để có thể làm việc hoàn chỉnh, cần khởi tạo App ít nhất một lần từ bất kì Activity được khởi động
+```java
+    App.getInstance().init(this);
+```
 
 ### Model
 - Ví dụ mẫu model:
 ```java
-    public class CauHoi extends Model {
-    
+    public class LuotChoi extends Model {
         @JsonName
-        private int id;
-    
+        public int id;
+        
         @JsonName
-        private String cauhoi;
-    
-        public String getCauhoi() {
-            return cauhoi;
-        }
-    
-        public void setCauhoi(String cauhoi) {
-            this.cauhoi = cauhoi;
-        }
+        public int diem;
+        
+        /// v1.1.0-dev
+        /// Hỗ trợ chứa model con
+        @JsonName(type = JsonName.Type.Model, clazz = NguoiChoi.class)
+        public NguoiChoi nguoiChoi;
+
+        /// Hỗ trợ chứa modelmanager
+        @JsonName(type = JsonName.Type.ModelManager, clazz = CTLuotChoi.class)
+        public ModelManager<CTLuotChoi> ctLuotChoi;
     }
 ```
 
@@ -68,10 +74,19 @@
         }
 
         @Override
-        protected void OnStart() {
+        protected void OnCreate() {
             /// variable "view" is protected on presenter
             view.testView();
         }
+        
+        
+        @Override
+        protected void OnResume(Model model){
+            /// Khi activity được tạo lại
+            /// cần presenter.postDataSaved(data); ở onDestroy() activity
+            /// dữ liệu sẽ được lưu lại trên presenter và gửi lại ở đây
+        }
+        
 
         public interface View {
             /// init method on View
@@ -102,30 +117,38 @@
 
 ### API Provider
 - Cấu hình HOST
+    Khi câu hình hostname một khi các request được gửi đi không chứa giao thức sẽ
+    được tự dộng thêm hostname này
 ```java
-    APIProvider.SetHost("http://192.168.1.130:8000/api");
+    APIConfig.setHostname("http://192.168.1.130:8000/api");
 ```
 
 - Đồng bộ GET:
 ```java
-    APIProvider.Output output = APIProvider.GET("/test");
+    APIOutput output = APIProvider.GET("/test");
 ```
 
 - Đồng bộ POST:
 ```java
-    Uri.Builder params = new Uri.Builder();
-    params.appendQueryParameter("key", "value");
-    APIProvider.Output output = APIProvider.POST("/testpost", params);
+    ApiParameters params = new ApiParameters();
+    params.add("key", "value");
+    APIOutput output = APIProvider.POST("/testpost", params);
 ```
+
+- ApiParameters:
+    Đối tượng này cho phép bạn gửi dữ liệu bao gồm Text, File, Bitmap và Bytes.
 
 - APIProvider.Output chứa 3 thuộc tính:
     + Status
     + Message
     + Data có kiểu (JsonObject| JsonArray)
+    + DataString
+    + Uri
+    + ResponseCode (Là code của giao thức HTTP)
     
-- Chuyển dổi  APIProvider.Output sang Model và ModelManager
+- Chuyển dổi  APIOutput sang Model và ModelManager
 ```java
-    APIProvider.Output output = ...;
+    APIOutput output = ...;
     if(output.isDJObject()){
         CauHoi cauHoi = output.toModel(CauHoi.class);
     }
@@ -157,71 +180,30 @@
                 }
             });
 ```
-
-
-### Loader & CustomLoader
-- Ứng dụng xây dựng phần Loading cho app hoặc game
-- VD
+ 
+- Người đánh chặn ApiIntercept:
 ```java
-    new CustomLoader(){
+    ApiIntercept intercept = new ApiIntercept() {
         @Override
-        protected void OnUpdateProgress(int p) {
-           //// UPDATE BAR ////
-           //// Được gọi trên thread UI
+        public void OnHeaderInject(HttpURLConnection connection) {
+            /// Trước khi gửi request
+            /// Nếu là phương thức POST, dữ liệu chưa được thêm
         }
 
         @Override
-        protected void OnUpdateText(String text) {
-           //// UDPDATE TEXT ////
-           /// Được gọi trên thread UI
+        public void OnResult(ApiOutput apiOutput) {
+            /// Khi nhận được Output
         }
+    };
 
-        @Override
-        protected void OnStartLoad() {
-            /// Thêm các thứ cần Load
-            /// Chúng ta sẽ nói về AddLoad sao
-            /// VD
-            this.AddLoad(new Load<ModelManager<CHDiemCauHoi>>("Load config answer...", "Load config answer error"){
-                @Override
-                protected ModelManager<CHDiemCauHoi> OnRun() {
-                    return chDiemCauHoi = APIProvider.GET(APIUri.CAU_HINH_CAU_HOI).toModelManager(CHDiemCauHoi.class);
-                }
-            });
-        }
-
-        @Override
-        protected void OnCompleteLoad() {
-            ///// COMPLETE LOAD /////
-            /// Được gọi trên thread UI            
-        }
-    }.start();
+    ApiConfig.addIntercept(intercept);
 ```
 
-- Để quản lý các thứ cần Load bạn phải gọi phương thức AddLoad, AddLoad yêu cầu truyền vào
-một đối tượng Load, đối tượng này chứa 2 thông tin cơ bản là
-    + Nội dung thông báo trước khi load
-    + Nội dung thông báo khi load xong
+- Thêm xác thực Json Web Token (Jwt):
 ```java
-    new Load<KieuTraVe>("Thông Báo Trước Khi Load", "Thông Báo Sau Khi Load Xong"){
-        @Override
-        protected KieuTraVe OnRun() {
-            /// Bất đồng bộ
-            return tra_ve_doi_tuong_duoc_load;
-        }
-    }
+    ApiConfig.setAuthenticate(new JWTAuthenticate(token));
 ```
-Đối tượng được Return ở OnRun dùng để kiểm tra xem có load thành công chưa, và để kiểm tra xem
-một đối tượng có được load chưa ta gọi phương thức của Load như
-```java
-    .AddErrorNull()
-```
-Kiểm tra đối tượng khác NULL hoặc tự định nghĩa
-```java
-    .AddError(new Load.CBError() {
-        @Override
-        public boolean error(Object o) {
-            return false;
-        }
-    })
-```
-    
+  + Tấc cả request tiếp theo sẽ tự động được thêm xác thực.
+  + Để hủy có thể gán null
+  + Tạm dưng xác thực sử dụng ```ApiConfig.getAuthenticate().setStatus(false)```
+   
