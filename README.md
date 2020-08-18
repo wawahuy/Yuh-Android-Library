@@ -19,7 +19,10 @@
 ```
 
 ## Tài Liêu Game/Graphics
-- Chưa có hướng dẫn
+- Không có tài liệu
+- Nó có cấu trúc tương tự vơi các Engine như Cocos-2dx, tuy nhiên ít hơn,
+hiệu năng kém hơn do sử dụng canvas thay vì OpenGL
+- Xem tại 'lib/src/main/java/ml/huytools/lib/Game'
 - Repo phát triễn & mẫu: https://github.com/wawahuy/YCNAnswerAndroid
 
 ## Tài liệu Cơ Bản API & MVP
