@@ -51,6 +51,11 @@ hiệu năng kém hơn do sử dụng canvas thay vì OpenGL
         /// Hỗ trợ chứa modelmanager
         @JsonName(type = JsonName.Type.ModelManager, clazz = CTLuotChoi.class)
         public ModelManager<CTLuotChoi> ctLuotChoi;
+
+	/// Hỗ trợ array
+	/// Exp json: lists: [1, 2, 3,...]
+	@JsonName
+	public JsonArray lists;
     }
 ```
 
